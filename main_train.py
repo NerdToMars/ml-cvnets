@@ -33,8 +33,11 @@ from utils.ddp_utils import distributed_init, is_master
 @errors.record
 def main(opts: argparse.Namespace, **kwargs) -> None:
     # defaults are for CPU
-    dev_id = getattr(opts, "dev.device_id", torch.device("cpu"))
-    device = getattr(opts, "dev.device", torch.device("cpu"))
+    dev_id = getattr(opts, "dev.device_id", torch.device("mps"))
+    device = getattr(opts, "dev.device", torch.device("mps"))
+
+    print("Device ID: ", dev_id)
+    print("Device: ", device)
     use_distributed = getattr(opts, "ddp.use_distributed")
 
     is_master_node = is_master(opts)
@@ -84,7 +87,7 @@ def main(opts: argparse.Namespace, **kwargs) -> None:
                 Please use it only for debugging purposes. We will deprecated the support for DataParallel in future and \
                     encourage you to use DistributedDataParallel."
         )
-        model = model.to(memory_format=memory_format, device=torch.device("cpu"))
+        model = model.to(memory_format=memory_format, device=torch.device("mps"))
         model = torch.nn.DataParallel(model)
         model = model.to(device=device)
     elif use_distributed:

@@ -5,14 +5,15 @@ common:
   accum_after_epoch: -1
   log_freq: 200
   auto_resume: false
-  mixed_precision: true
+  mixed_precision: false
   grad_clip: 10.0
+  save_interval_freq: 400
 dataset:
-  root_train: "/mnt/vision_datasets/ADEChallengeData2016/"
-  root_val: "/mnt/vision_datasets/ADEChallengeData2016/"
+  root_train: "./vision_datasets/ADEChallengeData2016/"
+  root_val: "./vision_datasets/ADEChallengeData2016/"
   name: "ade20k"
   category: "segmentation"
-  train_batch_size0: 4 # effective batch size is 16 ( 4 * 4 GPUs)
+  train_batch_size0: 8 # effective batch size is 16 ( 4 * 4 GPUs)
   val_batch_size0: 4
   eval_batch_size0: 1
   workers: 4
@@ -28,12 +29,12 @@ image_augmentation:
     enable: true
   resize:
     enable: true
-    size: [512, 512]
+    size: [128, 128]
     interpolation: "bicubic"
   random_short_size_resize:
     enable: true
     interpolation: "bicubic"
-    short_side_min: 256
+    short_side_min: 120
     short_side_max: 768
     max_img_dim: 1024
   photo_metric_distort:
@@ -47,8 +48,8 @@ image_augmentation:
 sampler:
   name: "batch_sampler"
   bs:
-    crop_size_width: 512
-    crop_size_height: 512
+    crop_size_width: 128
+    crop_size_height: 128
 loss:
   category: "segmentation"
   segmentation:
@@ -83,10 +84,11 @@ model:
       aspp_dropout: 0.1
       aspp_out_channels: 512
       aspp_rates: [ 12, 24, 36 ]
+      pretrained: "/Users/pinohuang/develop/ml-cvnets/deeplabv3_mobilevitv2_results/width_1_0_0/train/training_checkpoint_last.pt"
   classification:
     name: "mobilevit_v2"
     n_classes: 1000
-    pretrained: "https://docs-assets.developer.apple.com/ml-research/models/cvnets-v2/classification/mobilevitv2/imagenet1k/256x256/mobilevitv2-1.0.pt"
+    # pretrained: "https://docs-assets.developer.apple.com/ml-research/models/cvnets-v2/classification/mobilevitv2/imagenet1k/256x256/mobilevitv2-1.0.pt"
     mitv2:
       width_multiplier: 1.0
       attn_norm_layer: "layer_norm_2d"

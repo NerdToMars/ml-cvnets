@@ -79,7 +79,8 @@ def device_setup(opts):
     if n_gpus == 0:
         if is_master_node:
             logger.warning("No GPUs available. Using CPU")
-        device = torch.device("cpu")
+        # device = torch.device("cpu")
+        device = torch.device("mps")
         n_gpus = 0
     else:
         if is_master_node:

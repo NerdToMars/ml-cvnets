@@ -15,6 +15,7 @@ import numpy as np
 import torch
 from torch import Tensor
 from torch.nn import functional as F
+import matplotlib.pyplot as plt
 
 from common import DEFAULT_EPOCHS, DEFAULT_ITERATIONS, DEFAULT_LOG_FREQ, if_test_env
 from data.transforms.image_torch import apply_mixing_transforms
@@ -31,6 +32,64 @@ from utils.checkpoint_utils import (
 from utils.common_utils import move_to_device, unwrap_model_fn
 from utils.ddp_utils import dist_barrier, is_master
 from utils.tensor_utils import reduce_tensor_sum
+
+
+def save_checkpoint_vis(opt, model, input_tensor, target_tensor, iter):
+    """
+    This function saves the model checkpoint for visualization purposes
+    """
+    # input_image = plt.imread("/Users/pinohuang/develop/ml-cvnets/vision_datasets/ADEChallengeData2016/images/validation/ADE_val_00000012.jpg")
+    # target = plt.imread("/Users/pinohuang/develop/ml-cvnets/vision_datasets/ADEChallengeData2016/annotations/validation/ADE_val_00000012.jpg")
+
+    # input_image = torch.tensor(input_image).permute(2, 0, 1).unsqueeze(0)
+    logger.log(f"input_tensor shape: {input_tensor.shape}")
+    logger.log(f"target_tensor shape: {target_tensor.shape}")
+
+    tensor_with_batch = input_tensor.unsqueeze(0)
+    logger.log(f"tensor_with_batch shape: {tensor_with_batch.shape}")
+
+    model.eval()
+    pred_label = model(tensor_with_batch)
+    pred = torch.argmax(pred_label[0], dim=0)
+    pred = pred.cpu().numpy()
+
+    # use subplots to plot the image, target and prediction
+    fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+    # plot the image
+    axs[0].imshow(np.transpose(input_tensor.cpu().numpy(), (1, 2, 0)))
+    axs[0].set_title("Image")
+    # add the color bar
+    # plot the target
+    logger.log(f"target_tensor shape: {target_tensor.shape}")
+    im1 = axs[1].imshow(target_tensor.cpu().numpy())
+    axs[1].set_title("Target")
+    plt.colorbar(im1, ax=axs[1])
+    # plot the prediction
+    im2 = axs[2].imshow(pred)
+    axs[2].set_title("Prediction")
+    plt.colorbar(im2, ax=axs[2])
+
+    # calculate loss
+    stats = Statistics(opts=opt, metric_names=["iou"], is_master_node=True)
+    value = stats.metric_dict["iou"].gather_metrics(pred_label, target_tensor.unsqueeze(0), extras={})
+    iou = value["inter"] / value["union"]
+    if isinstance(iou, Tensor):
+        iou = iou.cpu().numpy()
+        # Converting iou from [0, 1] to [0, 100]
+        # other metrics are by default in [0, 100 range]
+    avg_iou = np.mean(iou) * 100.0
+
+    # validation_stats.update(
+    #     pred_label=pred_label[0],
+    #     target_label=targets,
+    #     extras={"loss": loss_dict_or_tensor},
+    #     batch_time=0,
+    #     batch_size=4,
+    # )
+    # add global title
+    plt.suptitle(f"Image, Target and Prediction IoU: {avg_iou:.4f}")
+    # save as image 
+    plt.savefig(f"./vision_datasets/val/image_target_pred_{iter:06d}.png")
 
 
 class Trainer(object):
@@ -69,7 +128,7 @@ class Trainer(object):
         self.val_loader = validation_loader
         self.train_loader = training_loader
 
-        self.device = getattr(opts, "dev.device", torch.device("cpu"))
+        self.device = getattr(opts, "dev.device", torch.device("mps"))
 
         self.start_epoch = start_epoch
         self.best_metric = best_metric
@@ -101,7 +160,7 @@ class Trainer(object):
         )
 
         if "loss" not in self.train_metric_names:
-            self.train_metric_names.append(self.train_metric_names)
+            self.train_metric_names.append("loss")
 
         (
             self.val_metric_names,
@@ -335,6 +394,10 @@ class Trainer(object):
                     gradient_scaler=self.gradient_scaler,
                     model_ema=self.model_ema,
                 )
+
+                val0 = self.val_loader.dataset.__getitem__((128,128,0))
+
+                save_checkpoint_vis(self.opts, self.model, val0["samples"].to(self.device), val0["targets"].to(self.device), self.train_iterations)
                 logger.info(
                     "Checkpoints saved after {} updates at: {}".format(
                         self.train_iterations, self.save_location

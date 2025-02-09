@@ -59,6 +59,9 @@ In the below example, we download an image from the Internet and then segment ob
  export CFG_FILE="https://docs-assets.developer.apple.com/ml-research/models/cvnets-v2/segmentation/pascalvoc/mobilevitv2/deeplabv3-mobilevitv2-1.0.yaml"
  export MODEL_WEIGHTS="https://docs-assets.developer.apple.com/ml-research/models/cvnets-v2/segmentation/pascalvoc/mobilevitv2/deeplabv3-mobilevitv2-1.0.pt"
  cvnets-eval-seg 
+
+ export CFG_FILE="config/segmentation/ade20k/deeplabv3_mobilevitv2.yaml"
+ export MODEL_WEIGHTS=""
  python main_eval.py --common.config-file $CFG_FILE --common.results-loc deeplabv3_mobilevitv2_results --model.segmentation.pretrained $MODEL_WEIGHTS --model.segmentation.n-classes 21 \
  --evaluation.segmentation.resize-input-images --evaluation.segmentation.mode single_image --evaluation.segmentation.path "${IMG_PATH}" --evaluation.segmentation.save-masks \
  --evaluation.segmentation.apply-color-map --evaluation.segmentation.save-overlay-rgb-pred
